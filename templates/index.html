@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loci Similes — Dataset Demo</title>
+  <style>
+    :root { color-scheme: light; --accent: #008ECE; --ink: #222; --muted: #666; --line: #e3e3e3; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--ink); background: #fff; }
+    header { border-bottom: 4px solid var(--accent); padding: 2rem 1.5rem 1.25rem; }
+    header h1 { margin: 0 0 .25rem; font-size: 1.75rem; }
+    header p { margin: 0; color: var(--muted); }
+    main { max-width: 68rem; margin: 0 auto; padding: 1.5rem; }
+    .notice { background: #eff6fe; border: 1px solid #6c8ebf; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1.5rem; }
+    section { margin-bottom: 2rem; }
+    h2 { font-size: 1.2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
+    table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+    th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .wrap { overflow-x: auto; }
+    td.text { max-width: 28rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    footer { color: var(--muted); font-size: .85rem; padding: 1rem 1.5rem 2rem; border-top: 1px solid var(--line); }
+    code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Loci Similes — Dataset Demo</h1>
+  <p>A benchmark for extracting intertextualities in Latin literature</p>
+</header>
+<main>
+  <div class="notice">
+    <strong>Placeholder page.</strong> The build pipeline works end to end (download from the Hugging Face Hub → build → deploy);
+    the corpus and link browser will replace this page.
+  </div>
+
+  {% for ds in datasets %}
+  <section>
+    <h2><code>{{ ds.name }}</code> — {{ "{:,}".format(ds.rows) }} rows</h2>
+    <p>Columns: {% for c in ds.columns %}<code>{{ c }}</code>{{ ", " if not loop.last }}{% endfor %}</p>
+    <div class="wrap">
+      <table>
+        <thead><tr>{% for c in ds.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for row in ds.sample %}
+          <tr>{% for c in ds.columns %}<td class="text" title="{{ row[c] }}">{{ row[c] }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+</main>
+<footer>
+  Data: <a href="https://huggingface.co/collections/julian-schelb/datasets-for-latin-intertextuality-search">Datasets for Latin Intertextuality Search</a> (Hugging Face Hub).
+  Built {{ built_at }}.
+</footer>
+</body>
+</html>

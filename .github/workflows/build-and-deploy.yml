@@ -1,0 +1,55 @@
+name: Build and deploy demo page
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * 1"   # weekly, Monday 04:00 UTC, to pick up dataset updates
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download datasets from the Hugging Face Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # optional; only needed for private datasets
+        run: python scripts/download_data.py --data-dir data
+
+      - name: Build static site
+        run: python scripts/build_site.py --data-dir data --out-dir site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
