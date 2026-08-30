@@ -1,5 +1,7 @@
 # Loci Similes — Dataset Demo Page
 
+Live page: https://julianschelb.github.io/loci-similes-demo-page/
+
 Static demo page showing the corpus and the intertextual links of the
 [Loci Similes](https://huggingface.co/collections/julian-schelb/datasets-for-latin-intertextuality-search)
 benchmark. The site is rebuilt from the Hugging Face datasets by a GitHub
