@@ -22,7 +22,7 @@ DATASETS = {
 
 def download(data_dir: Path) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
-    token = os.environ.get("HF_TOKEN")  # optional; datasets are public
+    token = os.environ.get("HF_TOKEN") or None  # optional; datasets are public
     for name, repo_id in DATASETS.items():
         print(f"Downloading {repo_id} ...")
         local = snapshot_download(
