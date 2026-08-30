@@ -1,14 +1,17 @@
 """Convert the downloaded parquet datasets into JSON files for the web app.
 
 Output goes to public/data/ and is bundled by Vite:
-  stats.json  - row counts and columns of the datasets
-  graph.json  - document/author graph of the references (nodes, hulls, edges)
+  stats.json       - row counts and columns of the datasets
+  graph.json       - document/author graph of the references (nodes, hulls, edges)
+  references.json  - all references with both segments (for the document browser)
+  docs/<side>/<work>.json - all segments of one work (loaded on demand)
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -93,6 +96,46 @@ def build_graph(labels: pd.DataFrame, corpus: pd.DataFrame, queries: pd.DataFram
     }
 
 
+def slug(work: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", work.lower()).strip("-")
+
+
+PROVENANCE = {
+    "burns": "Burns et al. (2021)",
+    "ngram_pipeline": "Schropp et al. (2024, DHQ)",
+    "schropp_goldstandard": "Schropp et al. (2024, DCO)",
+}
+
+
+def write_references(labels: pd.DataFrame, out_dir: Path) -> None:
+    refs = []
+    for r in labels.itertuples(index=False):
+        refs.append({
+            "id": int(r.id),
+            "type": "cit" if r.reference_type.startswith("cit") else "cf",
+            "q": {"author": r.query_author, "work": r.query_work, "cit": r.query_citation, "text": r.query_text, "en": r.query_text_english},
+            "s": {"author": r.corpus_author, "work": r.corpus_work, "cit": r.corpus_citation, "text": r.corpus_text, "en": r.corpus_text_english},
+            "prov": {"key": r.provenance_dataset, "label": PROVENANCE.get(r.provenance_dataset, r.provenance_dataset), "title": r.provenance_title, "url": r.provenance_url},
+        })
+    (out_dir / "references.json").write_text(json.dumps(refs, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print(f"Wrote {out_dir / 'references.json'}: {len(refs)} references")
+
+
+def write_docs(frames: dict[str, pd.DataFrame], out_dir: Path) -> None:
+    index = {}
+    for side, name in (("query", "queries"), ("source", "corpus")):
+        df = frames[name]
+        d = out_dir / "docs" / side
+        d.mkdir(parents=True, exist_ok=True)
+        for work, g in df.groupby("work", sort=True):
+            segs = [{"id": int(x.id), "cit": x.citation, "text": x.text} for x in g.itertuples(index=False)]
+            file = f"{slug(work)}.json"
+            (d / file).write_text(json.dumps(segs, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            index[f"{side}:{work}"] = {"side": side, "work": work, "author": g.author.iloc[0], "author_name": author_name(g.author.iloc[0]), "file": f"docs/{side}/{file}", "segments": len(segs)}
+    (out_dir / "docs.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print(f"Wrote {out_dir / 'docs.json'}: {len(index)} documents")
+
+
 def prepare(data_dir: Path, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     frames = {p.stem: pd.read_parquet(p) for p in sorted(data_dir.glob("*.parquet"))}
@@ -106,6 +149,9 @@ def prepare(data_dir: Path, out_dir: Path) -> None:
     graph = build_graph(frames["labels"], frames["corpus"], frames["queries"])
     (out_dir / "graph.json").write_text(json.dumps(graph, separators=(",", ":")), encoding="utf-8")
     print(f"Wrote {out_dir / 'graph.json'}: {len(graph['nodes'])} nodes, {len(graph['authors'])} authors, {len(graph['edges'])} edges")
+
+    write_references(frames["labels"], out_dir)
+    write_docs(frames, out_dir)
 
 
 if __name__ == "__main__":

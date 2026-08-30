@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import PaperHeader from "./components/PaperHeader.jsx";
-import Placeholder from "./components/Placeholder.jsx";
 import ReferenceGraph from "./components/ReferenceGraph.jsx";
-import SelectionChips from "./components/SelectionChips.jsx";
+import FilterBar from "./components/FilterBar.jsx";
+import DocumentBrowser from "./components/DocumentBrowser.jsx";
+import { EMPTY_FILTERS, applyFilters, filtersFromHash, filtersFromSelection, filtersToHash, selectionFromFilters } from "./filters.js";
 
 function Section({ kicker, title, children }) {
   return (
@@ -14,51 +15,44 @@ function Section({ kicker, title, children }) {
   );
 }
 
+const load = (file) => fetch(`${import.meta.env.BASE_URL}data/${file}`).then((r) => (r.ok ? r.json() : null));
+
 export default function App() {
   const [stats, setStats] = useState(null);
   const [graph, setGraph] = useState(null);
-  const [selection, setSelection] = useState(null);
+  const [refs, setRefs] = useState(null);
+  const [docsIndex, setDocsIndex] = useState(null);
+  const [filters, setFilters] = useState(() => filtersFromHash(window.location.hash));
 
   useEffect(() => {
-    const base = import.meta.env.BASE_URL;
-    fetch(`${base}data/stats.json`).then((r) => (r.ok ? r.json() : null)).then(setStats).catch(() => {});
-    fetch(`${base}data/graph.json`).then((r) => (r.ok ? r.json() : null)).then(setGraph).catch(() => {});
+    load("stats.json").then(setStats).catch(() => {});
+    load("graph.json").then(setGraph).catch(() => {});
+    load("references.json").then(setRefs).catch(() => {});
+    load("docs.json").then(setDocsIndex).catch(() => {});
   }, []);
 
-  // Number of references matching the current selection (from the edge list).
-  const matching = useMemo(() => {
-    if (!graph) return null;
-    const nodeAuthor = Object.fromEntries(graph.nodes.map((n) => [n.id, n.author]));
-    return graph.edges
-      .filter((e) => {
-        if (!selection) return true;
-        if (selection.kind === "author") return nodeAuthor[e.source] === selection.id || nodeAuthor[e.target] === selection.id;
-        if (selection.kind === "work") return e.source === selection.id || e.target === selection.id;
-        return e.source === selection.source && e.target === selection.target;
-      })
-      .reduce((s, e) => s + e.refs, 0);
-  }, [graph, selection]);
+  // Keep the URL hash in sync so filtered views can be shared.
+  useEffect(() => {
+    const h = filtersToHash(filters);
+    if (h !== window.location.hash) window.history.replaceState(null, "", h || window.location.pathname);
+  }, [filters]);
+
+  const selection = useMemo(() => selectionFromFilters(filters, graph), [filters, graph]);
+  const filtered = useMemo(() => (refs ? applyFilters(refs, filters) : []), [refs, filters]);
 
   return (
     <div className="mx-auto max-w-[1040px] px-6 pb-24">
       <PaperHeader />
 
       <Section kicker="Explore" title="Reference graph">
-        <ReferenceGraph graph={graph} selection={selection} onSelect={setSelection} />
+        <ReferenceGraph graph={graph} selection={selection} onSelect={(sel) => setFilters(sel ? filtersFromSelection(sel, graph) : EMPTY_FILTERS)} />
       </Section>
 
       <Section kicker="Browse" title="Documents and references">
-        <div className="mb-4">
-          <SelectionChips selection={selection} onClear={() => setSelection(null)} />
+        <div className="mb-6">
+          <FilterBar graph={graph} filters={filters} onChange={setFilters} shown={filtered.length} total={refs?.length ?? 0} />
         </div>
-        <Placeholder
-          description={
-            matching == null
-              ? "Query segments with their intertextual references to the source corpus, side by side."
-              : `This list will show the ${matching.toLocaleString()} reference${matching === 1 ? "" : "s"} matching the current filter, each with the citing and the source segment side by side.`
-          }
-          height="h-72"
-        />
+        {refs ? <DocumentBrowser refs={filtered} docsIndex={docsIndex} /> : <p className="text-muted">Loading references…</p>}
       </Section>
 
       <footer className="mt-16 flex flex-wrap justify-between gap-2 border-t border-line pt-5 text-[.88rem] font-semibold text-muted">
