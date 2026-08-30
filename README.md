@@ -2,31 +2,36 @@
 
 Live page: https://julianschelb.github.io/loci-similes-demo-page/
 
-Static demo page showing the corpus and the intertextual links of the
+Read-only web demo of the corpus and the intertextual references of the
 [Loci Similes](https://huggingface.co/collections/julian-schelb/datasets-for-latin-intertextuality-search)
-benchmark. The site is rebuilt from the Hugging Face datasets by a GitHub
-Actions workflow and published with GitHub Pages.
+benchmark: a paper header, an interactive reference graph, and a browser for
+the documents and their references. Built with React, Vite and Tailwind CSS;
+data is pulled from the Hugging Face Hub by a GitHub Actions workflow and the
+app is published with GitHub Pages.
 
 ## Pipeline
 
 1. `scripts/download_data.py` downloads the public datasets of the collection
    (`corpus`, `queries`, `labels`) into `data/`.
-2. `scripts/build_site.py` renders the static site into `site/` from the
-   Jinja templates in `templates/`.
-3. `.github/workflows/build-and-deploy.yml` runs both steps on every push to
-   `main`, weekly, or manually, and deploys `site/` to GitHub Pages.
+2. `scripts/prepare_data.py` converts them into JSON under `public/data/`
+   for the app.
+3. `npm run build` bundles the app into `dist/`.
+4. `.github/workflows/build-and-deploy.yml` runs all steps on every push to
+   `main`, weekly, or manually, and deploys `dist/` to GitHub Pages
+   (Settings → Pages → Source: GitHub Actions).
 
-## Local build
+## Local development
 
 ```bash
 pip install -r requirements.txt
 python scripts/download_data.py
-python scripts/build_site.py
-python -m http.server -d site 8000   # open http://localhost:8000
+python scripts/prepare_data.py
+npm install
+npm run dev        # http://localhost:5173/loci-similes-demo-page/
 ```
 
-## Setup on GitHub
+## Layout
 
-Repository → Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
-No secrets are required for the public datasets; set `HF_TOKEN` only if private
-datasets are added later.
+- `src/paper.js` — paper metadata shown in the header (title, authors, abstract, links, BibTeX).
+- `src/components/PaperHeader.jsx` — ACL-Anthology-style header with abstract and action buttons.
+- `src/components/Placeholder.jsx` — placeholder panels for the graph and the document browser.

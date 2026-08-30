@@ -27,7 +27,12 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install dependencies
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Python dependencies
         run: pip install -r requirements.txt
 
       - name: Download datasets from the Hugging Face Hub
@@ -35,14 +40,20 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}   # optional; only needed for private datasets
         run: python scripts/download_data.py --data-dir data
 
-      - name: Build static site
-        run: python scripts/build_site.py --data-dir data --out-dir site
+      - name: Prepare JSON data for the app
+        run: python scripts/prepare_data.py --data-dir data --out-dir public/data
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: dist
 
   deploy:
     needs: build
