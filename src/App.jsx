@@ -44,9 +44,7 @@ export default function App() {
       <PaperHeader />
 
       <Section kicker="Explore" title="Reference graph">
-        <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
-          <ReferenceGraph graph={graph} selection={selection} onSelect={setSelection} />
-        </div>
+        <ReferenceGraph graph={graph} selection={selection} onSelect={setSelection} />
       </Section>
 
       <Section kicker="Browse" title="Documents and references">

@@ -7,10 +7,20 @@ const H = 880;
 const CIT = "#5b4cb0";
 const CF = "#c05f21";
 
-// Soft fills for author hulls (one per author, assigned in data order).
-const HULL_COLORS = [
-  "#ece8f8", "#fdeeda", "#e3f2ea", "#fbe7ee", "#e6eef9", "#f6efd9",
-  "#e8f3f5", "#f1e8f8", "#eaf1e1", "#fbe9e2", "#e9eaf2", "#f3ecd8",
+// One hue per author (modern, evenly spaced); nodes use the hue, hulls a light tint of it.
+const AUTHOR_COLORS = [
+  "#6366f1", // indigo
+  "#f97316", // orange
+  "#10b981", // emerald
+  "#ec4899", // pink
+  "#0ea5e9", // sky
+  "#eab308", // yellow
+  "#14b8a6", // teal
+  "#a855f7", // violet
+  "#84cc16", // lime
+  "#f43f5e", // rose
+  "#06b6d4", // cyan
+  "#8b5cf6", // purple
 ];
 
 const radius = (refs) => 5 + Math.sqrt(refs) * 0.85;
@@ -72,9 +82,10 @@ function useLayout(graph) {
       // Label at the outer top corner of the hull, away from the edges in the middle.
       const minY = Math.min(...hull.map((p) => p[1]));
       const outerX = a.side === "query" ? Math.min(...hull.map((p) => p[0])) : Math.max(...hull.map((p) => p[0]));
-      return { ...a, hull, color: HULL_COLORS[i % HULL_COLORS.length], labelX: outerX, labelY: minY - 8 };
+      return { ...a, hull, color: AUTHOR_COLORS[i % AUTHOR_COLORS.length], labelX: outerX, labelY: minY - 8 };
     });
-    return { nodes, links, hulls, index };
+    const authorColor = Object.fromEntries(hulls.map((h) => [h.id, h.color]));
+    return { nodes, links, hulls, index, authorColor };
   }, [graph]);
 }
 
@@ -105,7 +116,7 @@ export default function ReferenceGraph({ graph, selection, onSelect }) {
   if (!layout) {
     return <div className="flex h-[880px] items-center justify-center text-muted">Loading graph…</div>;
   }
-  const { nodes, links, hulls } = layout;
+  const { nodes, links, hulls, authorColor } = layout;
 
   // Nodes connected to the current selection (for highlighting neighbours of an author/work).
   const connected = new Set();
@@ -137,9 +148,8 @@ export default function ReferenceGraph({ graph, selection, onSelect }) {
               onClick={(e) => { e.stopPropagation(); onSelect({ kind: "author", id: a.id, label: a.name, side: a.side }); }}
               onMouseMove={(e) => tip(e, a.id, a.name, [`${a.works.length} work${a.works.length > 1 ? "s" : ""} · ${a.refs} references`, `${a.cit} verbatim (cit.) · ${a.cf} allusions (cf.)`])}
               onMouseLeave={() => setHover(null)}>
-              <path d={d} fill={a.color} stroke={a.color} strokeWidth="28" strokeLinejoin="round" />
-              <path d={d} fill="none" stroke={selection?.kind === "author" && selection.id === a.id ? CIT : "#e9e5dc"} strokeWidth={selection?.kind === "author" && selection.id === a.id ? 2.5 : 1.5} strokeLinejoin="round" style={{ transform: "translate(0,0)" }} />
-              <text x={a.labelX} y={a.labelY - 8} textAnchor={a.side === "query" ? "start" : "end"} className="fill-ink" style={{ fontSize: 15, fontWeight: 800 }}>{a.name}</text>
+              <path d={d} fill={a.color} stroke={a.color} strokeWidth="28" strokeLinejoin="round" opacity={selection?.kind === "author" && selection.id === a.id ? 0.22 : 0.11} />
+              <text x={a.labelX} y={a.labelY - 8} textAnchor={a.side === "query" ? "start" : "end"} fill={a.color} style={{ fontSize: 15, fontWeight: 800 }}>{a.name}</text>
             </g>
           );
         })}
@@ -167,7 +177,7 @@ export default function ReferenceGraph({ graph, selection, onSelect }) {
               onClick={(e) => { e.stopPropagation(); onSelect({ kind: "work", id: n.id, label: n.work, author: n.author, side: n.side }); }}
               onMouseMove={(e) => tip(e, n.id, n.work, [`${n.side === "query" ? "citing" : "source"} work · ${n.segments.toLocaleString()} segments`, `${n.refs} references: ${n.cit} cit. · ${n.cf} cf.`])}
               onMouseLeave={() => setHover(null)}>
-              <circle cx={n.x} cy={n.y} r={n.r} fill={selected ? CIT : "#292433"} stroke="#fff" strokeWidth={selected ? 3 : 1.5} />
+              <circle cx={n.x} cy={n.y} r={n.r} fill={authorColor[n.author]} stroke={selected ? "#292433" : "#fff"} strokeWidth={selected ? 3 : 1.5} />
               {showLabel(n) && (
                 <text x={n.side === "query" ? n.x - n.r - 5 : n.x + n.r + 5} y={n.y + 4} textAnchor={n.side === "query" ? "end" : "start"} className="fill-ink-2" style={{ fontSize: 11.5, fontFamily: "JetBrains Mono, monospace", fontWeight: 500, paintOrder: "stroke", stroke: "#fcfbf7", strokeWidth: 3 }}>{n.work}</text>
               )}
