@@ -3,7 +3,7 @@ import { forceSimulation, forceX, forceY, forceCollide, forceLink } from "d3-for
 import { polygonHull } from "d3-polygon";
 
 const W = 1000;
-const H = 760;
+const H = 880;
 const CIT = "#5b4cb0";
 const CF = "#c05f21";
 
@@ -30,7 +30,7 @@ function useLayout(graph) {
       // Slot height from the cluster footprint: circles of radius r+7 packed together, plus label room.
       const weights = list.map((a) => {
         const area = a.works.reduce((s, id) => s + Math.PI * (radius(nodeRefs[id]) + 7) ** 2, 0);
-        return 2 * Math.sqrt(area / Math.PI) + 70;
+        return 2.4 * Math.sqrt(area / Math.PI) + 80;
       });
       const total = weights.reduce((s, w) => s + w, 0);
       let y = 30;
@@ -103,7 +103,7 @@ export default function ReferenceGraph({ graph, selection, onSelect }) {
   const [hover, setHover] = useState(null); // { x, y, title, lines }
 
   if (!layout) {
-    return <div className="flex h-[760px] items-center justify-center text-muted">Loading graph…</div>;
+    return <div className="flex h-[880px] items-center justify-center text-muted">Loading graph…</div>;
   }
   const { nodes, links, hulls } = layout;
 
