@@ -39,6 +39,8 @@ jobs:
         run: python scripts/build_site.py --data-dir data --out-dir site
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true   # enables GitHub Pages (source: Actions) on first run
 
       - uses: actions/upload-pages-artifact@v3
         with:
