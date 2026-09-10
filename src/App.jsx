@@ -3,6 +3,7 @@ import PaperHeader from "./components/PaperHeader.jsx";
 import ReferenceGraph from "./components/ReferenceGraph.jsx";
 import FilterBar from "./components/FilterBar.jsx";
 import DocumentBrowser from "./components/DocumentBrowser.jsx";
+import EditScripts from "./components/EditScripts.jsx";
 import { EMPTY_FILTERS, applyFilters, filtersFromHash, filtersFromSelection, filtersToHash, selectionFromFilters } from "./filters.js";
 
 function Section({ kicker, title, children }) {
@@ -22,6 +23,7 @@ export default function App() {
   const [graph, setGraph] = useState(null);
   const [refs, setRefs] = useState(null);
   const [docsIndex, setDocsIndex] = useState(null);
+  const [scripts, setScripts] = useState(null);
   const [filters, setFilters] = useState(() => filtersFromHash(window.location.hash));
 
   useEffect(() => {
@@ -29,6 +31,7 @@ export default function App() {
     load("graph.json").then(setGraph).catch(() => {});
     load("references.json").then(setRefs).catch(() => {});
     load("docs.json").then(setDocsIndex).catch(() => {});
+    load("scripts.json").then(setScripts).catch(() => {});
   }, []);
 
   // Keep the URL hash in sync so filtered views can be shared.
@@ -53,6 +56,16 @@ export default function App() {
           <FilterBar graph={graph} filters={filters} onChange={setFilters} shown={filtered.length} total={refs?.length ?? 0} />
         </div>
         {refs ? <DocumentBrowser refs={filtered} docsIndex={docsIndex} /> : <p className="text-muted">Loading references…</p>}
+      </Section>
+
+      <Section kicker="Model" title="Edit scripts">
+        <p className="mb-5 max-w-[75ch] text-ink-2">
+          The reference pairs above say <em>that</em> a later passage draws on an earlier one. An edit script says{" "}
+          <em>how</em>: which word comes from which, and whether it was kept, re-inflected, replaced, or added by the
+          later author. Below is the script our aligner writes for pairs it never saw during training, beside the hand
+          labels.
+        </p>
+        <EditScripts data={scripts} />
       </Section>
 
       <footer className="mt-16 flex flex-wrap justify-between gap-2 border-t border-line pt-5 text-[.88rem] font-semibold text-muted">

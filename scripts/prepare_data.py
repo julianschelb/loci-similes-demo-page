@@ -4,6 +4,7 @@ Output goes to public/data/ and is bundled by Vite:
   stats.json       - row counts and columns of the datasets
   graph.json       - document/author graph of the references (nodes, hulls, edges)
   references.json  - all references with both segments (for the document browser)
+  scripts.json     - the aligner's edit scripts for the held-out fold (copied from model/)
   docs/<side>/<work>.json - all segments of one work (loaded on demand)
 """
 
@@ -152,6 +153,21 @@ def prepare(data_dir: Path, out_dir: Path) -> None:
 
     write_references(frames["labels"], out_dir)
     write_docs(frames, out_dir)
+    copy_scripts(out_dir)
+
+
+def copy_scripts(out_dir: Path, source: Path = Path("model/scripts.json")) -> None:
+    """The aligner's edit scripts for the held-out fold, produced offline by
+    export_demo_scripts.py in the method-paper repository and tracked here, since the
+    Hub datasets carry the references but not the model's output."""
+    if not source.exists():
+        print(f"No {source}; the edit-script section will stay empty")
+        return
+    import shutil
+
+    shutil.copyfile(source, out_dir / "scripts.json")
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    print(f"Wrote {out_dir / 'scripts.json'}: {len(payload['pairs'])} scripts from {payload['model']['name']}")
 
 
 if __name__ == "__main__":
