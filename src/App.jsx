@@ -46,7 +46,7 @@ export default function App() {
     <header className="border-b border-black/10 bg-linear-to-b from-header-top to-header-bottom">
       <div className="mx-auto max-w-[1040px] px-6 py-2.5">
         <p className="font-serif text-lg font-semibold">
-          <span className="text-pop">Loci Similes</span> <span className="text-accent">Dataset Demo</span>
+          <span className="text-pop">Loci Similes</span> <span className="text-accent">Dataset Explorer</span>
         </p>
       </div>
     </header>

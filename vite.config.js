@@ -6,7 +6,7 @@ import { paper } from "./src/paper.js";
 // Served from https://julianschelb.github.io/loci-similes-demo-page/
 const SITE = "https://julianschelb.github.io/loci-similes-demo-page/";
 const DESCRIPTION =
-  "Interactive demo of Loci Similes, a benchmark for Latin intertextuality detection: explore 1,490 expert-verified " +
+  "Interactive dataset explorer for Loci Similes, a benchmark for Latin intertextuality detection: explore 1,490 expert-verified " +
   "intertextual references between Latin authors such as Jerome, Lactantius, Valerius Flaccus, Virgil, Ovid and Cicero, " +
   "with word-level edit operations, translations and the datasets.";
 
@@ -89,7 +89,7 @@ function seo() {
 
   const body = `
       <header class="mx-auto max-w-[1040px] px-6 pt-10">
-        <p class="mb-1 text-[.7rem] font-semibold uppercase tracking-[.08em] text-muted">Dataset demo</p>
+        <p class="mb-1 text-[.7rem] font-semibold uppercase tracking-[.08em] text-muted">Dataset explorer</p>
         <h1 class="mb-3 font-serif text-[2rem] font-semibold leading-[1.18] text-ink">${esc(paper.title)}</h1>
         <p class="mb-1 font-semibold text-ink-2">${authors.map(esc).join(", ")}</p>
         <p class="text-[.9rem] italic text-muted">${esc(paper.venue)}</p>

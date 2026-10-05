@@ -1,4 +1,4 @@
-# Loci Similes — Dataset Demo Page
+# Loci Similes — Dataset Explorer
 
 Live page: https://julianschelb.github.io/loci-similes-demo-page/
 

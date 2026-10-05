@@ -58,7 +58,7 @@ export default function PaperHeader() {
 
   return (
     <header className="pt-10 pb-2">
-      <p className="mb-1 text-[.7rem] font-semibold uppercase tracking-[.08em] text-muted">Dataset demo</p>
+      <p className="mb-1 text-[.7rem] font-semibold uppercase tracking-[.08em] text-muted">Dataset explorer</p>
       <h1 className="mb-3 font-serif text-[2rem] font-semibold leading-[1.18] text-ink sm:text-[2.3rem]">
         {paper.title}
       </h1>
