@@ -189,6 +189,7 @@ function DetailDialog({ reference, names, onClose }) {
   const [record, setRecord] = useState(null);
   const [error, setError] = useState(null);
   const [closing, setClosing] = useState(false);
+  const [ready, setReady] = useState(false);   // the details are laid out (fonts in, mapping measured and aligned)
   const closeButton = useRef(null);
   // closing plays the fade-out first and unmounts after it (at once when the reader prefers less motion)
   const close = useCallback(() => {
@@ -197,11 +198,20 @@ function DetailDialog({ reference, names, onClose }) {
     setTimeout(onClose, DIALOG_OUT);
   }, [onClose]);
   useEffect(() => {
-    setRecord(null); setError(null);
+    setRecord(null); setError(null); setReady(false);
     fetch(`${import.meta.env.BASE_URL}data/details/${reference.id}.json`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(setRecord).catch((e) => setError(e.message));
   }, [reference.id]);
+  // While the details load and the mapping measures and aligns itself, a spinner shows; the finished view then
+  // fades in, so the reader never sees it being built.
+  useEffect(() => {
+    if (!record) return undefined;
+    let cancelled = false;
+    const settle = () => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => !cancelled && setReady(true), 60)));
+    (document.fonts?.ready ?? Promise.resolve()).then(settle);
+    return () => { cancelled = true; };
+  }, [record]);
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", onKey);
@@ -226,9 +236,21 @@ function DetailDialog({ reference, names, onClose }) {
             Close <span aria-hidden="true" className="text-base leading-none">×</span>
           </button>
         </header>
-        <div className="min-h-0 overflow-y-auto p-5 sm:p-7">
-          {record ? <PairDetail record={record} provenance={reference.prov} names={names} />
-            : <p className="p-8 text-center text-muted">{error ? `Could not load the details: ${error}` : "Loading…"}</p>}
+        <div className="relative min-h-[60vh] overflow-y-auto p-5 sm:p-7">
+          {error && <p className="p-8 text-center text-muted">Could not load the details: {error}</p>}
+          {record && (
+            <div className={`transition-opacity duration-300 ease-out ${ready ? "opacity-100" : "opacity-0"}`} aria-busy={!ready}>
+              <PairDetail record={record} provenance={reference.prov} names={names} />
+            </div>
+          )}
+          {!ready && !error && (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center" role="status" aria-label="Loading the details">
+              <div className="flex flex-col items-center gap-3 text-[.8rem] text-muted">
+                <span className="spinner" aria-hidden="true" />
+                Loading the details…
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
