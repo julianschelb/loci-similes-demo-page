@@ -67,3 +67,16 @@ body {
 }
 .btn-secondary:hover { color: var(--color-accent); border-color: var(--color-accent); background: linear-gradient(180deg, #ffffff 0%, #eef3f9 100%); }
 .btn-secondary[aria-pressed="true"] { color: var(--color-accent); border-color: var(--color-accent); background: linear-gradient(180deg, #f3f8fd 0%, #e3f2fd 100%); }
+
+/* The detail dialog: the backdrop fades, the panel rises and grows slightly into place; closing reverses it */
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes dialog-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px) scale(.98); } }
+.backdrop-in { animation: backdrop-in 200ms ease-out both; }
+.backdrop-out { animation: backdrop-out 180ms ease-in both; }
+.dialog-in { animation: dialog-in 260ms cubic-bezier(.2, .8, .2, 1) both; }
+.dialog-out { animation: dialog-out 180ms ease-in both; }
+@media (prefers-reduced-motion: reduce) {
+  .backdrop-in, .backdrop-out, .dialog-in, .dialog-out { animation: none; }
+}

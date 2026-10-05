@@ -183,10 +183,19 @@ function Group({ group, names, ops, showEnglish, onDetails }) {
  * The detail view of one reference in a full-screen dialog over the page: the review app's detail page, adapted.
  * Closed with the × button, Esc or a click on the backdrop; the page underneath keeps its place.
  */
+const DIALOG_OUT = 180;   // ms of the closing animation (keep in step with .dialog-out in index.css)
+
 function DetailDialog({ reference, names, onClose }) {
   const [record, setRecord] = useState(null);
   const [error, setError] = useState(null);
+  const [closing, setClosing] = useState(false);
   const closeButton = useRef(null);
+  // closing plays the fade-out first and unmounts after it (at once when the reader prefers less motion)
+  const close = useCallback(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { onClose(); return; }
+    setClosing(true);
+    setTimeout(onClose, DIALOG_OUT);
+  }, [onClose]);
   useEffect(() => {
     setRecord(null); setError(null);
     fetch(`${import.meta.env.BASE_URL}data/details/${reference.id}.json`)
@@ -194,17 +203,17 @@ function DetailDialog({ reference, names, onClose }) {
       .then(setRecord).catch((e) => setError(e.message));
   }, [reference.id]);
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeButton.current?.focus();
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = overflow; };
-  }, [onClose]);
+  }, [close]);
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 p-3 backdrop-blur-[2px] sm:p-6" onClick={onClose}
+    <div className={`fixed inset-0 z-50 flex items-start justify-center bg-ink/40 p-3 backdrop-blur-[2px] sm:p-6 ${closing ? "backdrop-out" : "backdrop-in"}`} onClick={close}
       role="dialog" aria-modal="true" aria-label={`Details of ${bare(reference.s.cit)} → ${bare(reference.q.cit)}`}>
-      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-bg shadow-card-lg"
+      <div className={`flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-bg shadow-card-lg ${closing ? "dialog-out" : "dialog-in"}`}
         onClick={(e) => e.stopPropagation()}>
         {/* the header stays while the details scroll, so the close button is always at hand */}
         <header className="flex shrink-0 items-center gap-3 border-b border-black/10 bg-linear-to-b from-header-top to-header-bottom px-5 py-2.5 sm:px-7">
@@ -212,7 +221,7 @@ function DetailDialog({ reference, names, onClose }) {
             <span className="text-pop">Details</span>{" "}
             <span className="text-accent">{bare(reference.s.cit)} → {bare(reference.q.cit)}</span>
           </p>
-          <button ref={closeButton} type="button" onClick={onClose} aria-label="Close"
+          <button ref={closeButton} type="button" onClick={close} aria-label="Close"
             className="btn-secondary ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1 text-[.8rem] font-semibold">
             Close <span aria-hidden="true" className="text-base leading-none">×</span>
           </button>
