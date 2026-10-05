@@ -1,30 +1,69 @@
 @import "tailwindcss";
 
-/* Design tokens: palette of julian-schelb.com */
+/* Design tokens (the Parchment theme of the edit-script review app): warm paper, dark ink, the Loci Similes blue as
+   the accent, slate as the secondary colour, one hue per edit operation */
 @theme {
-  --font-sans: "Nunito", ui-rounded, "SF Pro Rounded", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Source Serif 4", Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-bg: #fcfbf7;
+  --color-bg: #f7f6f2;
   --color-surface: #ffffff;
-  --color-ink: #292433;
-  --color-ink-2: #4c4457;
-  --color-muted: #837c8e;
-  --color-line: #e9e5dc;
-  --color-line-soft: #f2efe8;
-  --color-accent: #5b4cb0;
-  --color-accent-soft: #ece8f8;
-  --color-pop: #c05f21;
-  --color-pop-soft: #fdeeda;
+  --color-ink: #1f2328;
+  --color-ink-2: #3d434b;
+  --color-muted: #6a707a;
+  --color-line: #dcd9d0;
+  --color-line-soft: #ecebe5;
+  --color-accent: #4f80b8;
+  --color-accent-strong: #3f6b9e;
+  --color-accent-soft: #e3f2fd;
+  --color-pop: #4a5a6e;
+  --color-pop-soft: #e8ecf1;
+  --color-header-top: #f7f6f2;
+  --color-header-bottom: #e9e6de;
 
-  --shadow-card: 0 2px 4px rgba(41, 36, 51, 0.05), 0 12px 28px rgba(41, 36, 51, 0.08);
-  --shadow-card-lg: 0 6px 14px rgba(41, 36, 51, 0.08), 0 24px 55px rgba(41, 36, 51, 0.13);
+  /* operations: one hue each, a soft fill for token backgrounds */
+  --color-op-copy: #33618f;
+  --color-op-copy-soft: #e7eef5;
+  --color-op-inflect: #8a6414;
+  --color-op-inflect-soft: #f6efdd;
+  --color-op-subst: #9b3340;
+  --color-op-subst-soft: #f5e4e6;
+  --color-op-split: #5e4a93;
+  --color-op-split-soft: #ebe7f3;
+
+  --shadow-card: 0 1px 2px rgba(31, 35, 40, 0.04);
+  --shadow-card-lg: 0 4px 14px rgba(31, 35, 40, 0.10);
 }
 
 html { scroll-behavior: smooth; }
 body {
   @apply bg-bg text-ink font-sans antialiased;
-  font-size: 17px;
-  line-height: 1.62;
-  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
 }
+
+/* The hovered span's outline in the document browser fades in */
+@keyframes arrow-head { from { opacity: 0; } to { opacity: 1; } }
+.arrow-head { opacity: 0; animation: arrow-head 150ms ease-out forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .arrow-head { animation: none; opacity: 1; }
+}
+
+/* Buttons with a slight gradient: the blue primary (as the PDF button) and a paper-toned secondary */
+.btn-primary {
+  color: #fff;
+  border: 1px solid #3f6b9e;
+  background: linear-gradient(180deg, #6593c8 0%, #4f80b8 55%, #44729f 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(31, 35, 40, 0.12);
+}
+.btn-primary:hover { background: linear-gradient(180deg, #6f9ccf 0%, #5687c0 55%, #4a7aab 100%); }
+.btn-secondary {
+  color: var(--color-ink-2);
+  border: 1px solid var(--color-line);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f4ef 100%);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(31, 35, 40, 0.06);
+}
+.btn-secondary:hover { color: var(--color-accent); border-color: var(--color-accent); background: linear-gradient(180deg, #ffffff 0%, #eef3f9 100%); }
+.btn-secondary[aria-pressed="true"] { color: var(--color-accent); border-color: var(--color-accent); background: linear-gradient(180deg, #f3f8fd 0%, #e3f2fd 100%); }

@@ -5,6 +5,8 @@ Output goes to public/data/ and is bundled by Vite:
   graph.json       - document/author graph of the references (nodes, hulls, edges)
   references.json  - all references with both segments (for the document browser)
   scripts.json     - the aligner's edit scripts for the held-out fold (copied from model/)
+  ops.json         - the edit operation of every word of every reference (copied from model/)
+  details/<id>.json - one reference's detail view: tokens, texts, links (copied from model/)
   docs/<side>/<work>.json - all segments of one work (loaded on demand)
 """
 
@@ -154,6 +156,7 @@ def prepare(data_dir: Path, out_dir: Path) -> None:
     write_references(frames["labels"], out_dir)
     write_docs(frames, out_dir)
     copy_scripts(out_dir)
+    copy_ops(out_dir)
 
 
 def copy_scripts(out_dir: Path, source: Path = Path("model/scripts.json")) -> None:
@@ -168,6 +171,21 @@ def copy_scripts(out_dir: Path, source: Path = Path("model/scripts.json")) -> No
     shutil.copyfile(source, out_dir / "scripts.json")
     payload = json.loads(source.read_text(encoding="utf-8"))
     print(f"Wrote {out_dir / 'scripts.json'}: {len(payload['pairs'])} scripts from {payload['model']['name']}")
+
+
+def copy_ops(out_dir: Path, source: Path = Path("model")) -> None:
+    """The edit operations and the per-reference detail files, produced offline by
+    scripts/prepare_ops.py from the edit-script review app's records and tracked here."""
+    import shutil
+
+    ops, details = source / "ops.json", source / "details"
+    if not ops.exists():
+        print(f"No {ops}; the document browser shows no operations")
+        return
+    shutil.copyfile(ops, out_dir / "ops.json")
+    if details.exists():
+        shutil.copytree(details, out_dir / "details", dirs_exist_ok=True)
+    print(f"Wrote {out_dir / 'ops.json'} and {len(list(details.glob('*.json')))} detail files")
 
 
 if __name__ == "__main__":

@@ -18,13 +18,11 @@ const icons = {
 
 function ActionButton({ href, onClick, icon, children, variant = "secondary", active = false }) {
   const base =
-    "inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-[.95rem] font-extrabold transition " +
+    "inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[.95rem] font-semibold transition " +
     "hover:-translate-y-0.5 hover:shadow-card focus-visible:outline-2 focus-visible:outline-accent";
   const styles = {
-    primary: "border-accent bg-accent text-white hover:bg-[#4d3f9a]",
-    secondary: active
-      ? "border-accent bg-accent-soft text-accent"
-      : "border-line bg-surface text-ink-2 hover:border-accent hover:text-accent",
+    primary: "btn-primary",
+    secondary: "btn-secondary",
     pop: "border-pop-soft bg-pop-soft text-pop hover:border-pop",
   };
   const cls = `${base} ${styles[variant]}`;
@@ -60,16 +58,16 @@ export default function PaperHeader() {
 
   return (
     <header className="pt-10 pb-2">
-      <p className="mb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-pop">Dataset demo</p>
-      <h1 className="mb-3 text-[2.1rem] font-extrabold leading-[1.15] tracking-[-.02em] text-accent sm:text-[2.45rem]">
+      <p className="mb-1 text-[.7rem] font-semibold uppercase tracking-[.08em] text-muted">Dataset demo</p>
+      <h1 className="mb-3 font-serif text-[2rem] font-semibold leading-[1.18] text-ink sm:text-[2.3rem]">
         {paper.title}
       </h1>
 
-      <p className="mb-1 text-[1.05rem] font-bold text-ink-2">
+      <p className="mb-1 text-[1.05rem] font-semibold text-ink-2">
         {paper.authors.map((a, i) => (
           <span key={a.name}>
             {a.url ? (
-              <a className="text-accent hover:text-pop" href={a.url} target="_blank" rel="noopener">{a.name}</a>
+              <a className="hover:text-accent hover:underline" href={a.url} target="_blank" rel="noopener">{a.name}</a>
             ) : (
               a.name
             )}
@@ -90,8 +88,8 @@ export default function PaperHeader() {
       <hr className="my-6 border-line" />
 
       <div className="grid gap-5 md:grid-cols-[1fr_190px]">
-        <div className="rounded-2xl border border-line bg-surface p-6 shadow-card">
-          <h2 className="mb-2 text-[1.2rem] font-extrabold tracking-[-.01em]">Abstract</h2>
+        <div className="rounded-lg border border-line bg-surface p-6 shadow-card">
+          <h2 className="mb-2 font-serif text-[1.2rem] font-semibold">Abstract</h2>
           <p className="text-[.98rem] leading-[1.65] text-ink-2">{paper.abstract}</p>
         </div>
 
@@ -104,19 +102,19 @@ export default function PaperHeader() {
       </div>
 
       {showCite && (
-        <div className="mt-4 rounded-2xl border border-line bg-surface p-5 shadow-card">
+        <div className="mt-4 rounded-lg border border-line bg-surface p-5 shadow-card">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <h2 className="text-[1rem] font-extrabold">BibTeX</h2>
+            <h2 className="font-serif text-[1rem] font-semibold">BibTeX</h2>
             <button
               type="button"
               onClick={copyBibtex}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[.8rem] font-bold text-ink-2 transition hover:border-accent hover:text-accent"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[.8rem] font-semibold text-ink-2 transition hover:border-accent hover:text-accent"
             >
               <Icon d={copied ? icons.check : icons.copy} className="h-3.5 w-3.5" />
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
-          <pre className="overflow-x-auto rounded-xl bg-line-soft p-4 font-mono text-[.8rem] leading-relaxed text-ink-2">{paper.bibtex}</pre>
+          <pre className="overflow-x-auto rounded-md bg-line-soft p-4 font-mono text-[.8rem] leading-relaxed text-ink-2">{paper.bibtex}</pre>
         </div>
       )}
     </header>

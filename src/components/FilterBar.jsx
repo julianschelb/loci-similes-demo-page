@@ -3,12 +3,12 @@ import { EMPTY_FILTERS } from "../filters.js";
 function Select({ label, value, options, onChange, placeholder = "any" }) {
   return (
     <label className="flex min-w-0 flex-col gap-1">
-      <span className="text-[.65rem] font-extrabold uppercase tracking-[.1em] text-muted">{label}</span>
+      <span className="text-[.65rem] font-semibold uppercase tracking-[.1em] text-muted">{label}</span>
       <span className="relative">
         <select
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
-          className={`w-full appearance-none rounded-xl border bg-surface py-2 pl-3 pr-8 text-[.9rem] font-bold transition focus-visible:outline-2 focus-visible:outline-accent ${
+          className={`w-full appearance-none rounded-md border bg-surface py-2 pl-3 pr-8 text-[.9rem] font-semibold transition focus-visible:outline-2 focus-visible:outline-accent ${
             value ? "border-accent text-accent" : "border-line text-ink-2 hover:border-accent"
           }`}
         >
@@ -35,7 +35,7 @@ export default function FilterBar({ graph, filters, onChange, shown, total }) {
   const active = Object.values(filters).some(Boolean);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
+    <div className="rounded-lg border border-line bg-surface p-4 shadow-card">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_.7fr]">
         <Select label="Citing author" value={filters.qAuthor} options={authors("query")}
           onChange={(v) => set({ qAuthor: v, qWork: null })} />
@@ -55,7 +55,7 @@ export default function FilterBar({ graph, filters, onChange, shown, total }) {
           {active ? "" : " · select an author, work or edge in the graph, or use the filters"}
         </span>
         {active && (
-          <button type="button" onClick={() => onChange(EMPTY_FILTERS)} className="rounded-full border border-line px-3 py-1 font-bold text-ink-2 transition hover:border-pop hover:text-pop">
+          <button type="button" onClick={() => onChange(EMPTY_FILTERS)} className="rounded-full border border-line px-3 py-1 font-semibold text-ink-2 transition hover:border-pop hover:text-pop">
             Clear filters ×
           </button>
         )}

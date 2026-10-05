@@ -2,11 +2,11 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /** Operation vocabulary of the edit script, with the colours used everywhere in this view. */
 const OPS = {
-  NOP: { label: "unchanged", stroke: "#8f8899", chip: "bg-line-soft text-ink-2 border-line" },
-  MORPH: { label: "inflected", stroke: "#5b4cb0", chip: "bg-accent-soft text-accent border-accent/25" },
-  SUBST: { label: "replaced", stroke: "#c05f21", chip: "bg-pop-soft text-pop border-pop/25" },
-  FRAME: { label: "citing formula", stroke: "#837c8e", chip: "bg-surface text-muted border-dashed border-muted/40" },
-  INS: { label: "the later author's own", stroke: "#d8d3c9", chip: "bg-surface text-muted border-line" },
+  NOP: { label: "unchanged", stroke: "#33618f", chip: "bg-op-copy-soft text-op-copy border-op-copy/25" },
+  MORPH: { label: "inflected", stroke: "#8a6414", chip: "bg-op-inflect-soft text-op-inflect border-op-inflect/25" },
+  SUBST: { label: "replaced", stroke: "#9b3340", chip: "bg-op-subst-soft text-op-subst border-op-subst/25" },
+  FRAME: { label: "citing formula", stroke: "#6a707a", chip: "bg-surface text-muted border-dashed border-muted/40" },
+  INS: { label: "the later author's own", stroke: "#dcd9d0", chip: "bg-surface text-muted border-line" },
 };
 const ORDER = ["NOP", "MORPH", "SUBST", "FRAME", "INS"];
 
@@ -14,7 +14,7 @@ const cite = (id) => id.replace(/^p0*/, "pair ");
 
 function Chip({ op, children }) {
   const o = OPS[op] ?? OPS.INS;
-  return <span className={`rounded-md border px-1.5 py-0.5 text-[.68rem] font-extrabold ${o.chip}`}>{children ?? o.label}</span>;
+  return <span className={`rounded-md border px-1.5 py-0.5 text-[.68rem] font-semibold ${o.chip}`}>{children ?? o.label}</span>;
 }
 
 /** One passage as wrapped word spans; every word registers its element so links can be drawn. */
@@ -67,7 +67,7 @@ function Links({ box, rects, links, ops, hover }) {
         key={t}
         d={`M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`}
         fill="none"
-        stroke={OPS[op]?.stroke ?? "#8f8899"}
+        stroke={OPS[op]?.stroke ?? "#6a707a"}
         strokeWidth={on ? 2.8 : 1.1}
         strokeOpacity={hover ? (on ? 0.95 : 0.12) : dense ? 0.3 : 0.5}
       />
@@ -82,9 +82,9 @@ function Links({ box, rects, links, ops, hover }) {
 
 function Metric({ name, value }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-2">
-      <div className="font-mono text-[1.05rem] font-extrabold text-accent">{value}</div>
-      <div className="text-[.68rem] font-bold uppercase tracking-[.08em] text-muted">{name}</div>
+    <div className="rounded-md border border-line bg-surface px-3 py-2">
+      <div className="font-mono text-[1.05rem] font-semibold text-accent">{value}</div>
+      <div className="text-[.68rem] font-semibold uppercase tracking-[.08em] text-muted">{name}</div>
     </div>
   );
 }
@@ -140,10 +140,10 @@ export default function EditScripts({ data }) {
   return (
     <div className="flex flex-col gap-5">
       {/* model card */}
-      <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+      <div className="rounded-lg border border-line bg-surface p-5 shadow-card">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 className="text-[1.05rem] font-extrabold text-accent">{data.model.name}</h3>
-          <span className="font-mono text-[.72rem] font-bold text-muted">
+          <h3 className="text-[1.05rem] font-semibold text-accent">{data.model.name}</h3>
+          <span className="font-mono text-[.72rem] font-semibold text-muted">
             held-out fold {data.model.fold} · {data.model.pairs} pairs · {data.model.date}
           </span>
         </div>
@@ -157,12 +157,12 @@ export default function EditScripts({ data }) {
 
       {/* controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex overflow-hidden rounded-xl border border-line">
+        <div className="flex overflow-hidden rounded-md border border-line">
           {[["pred", "Model"], ["gold", "Hand labels"]].map(([v, l]) => (
             <button
               key={v}
               onClick={() => setSource(v)}
-              className={`px-3 py-1.5 text-[.85rem] font-extrabold transition ${
+              className={`px-3 py-1.5 text-[.85rem] font-semibold transition ${
                 source === v ? "bg-accent text-white" : "bg-surface text-ink-2 hover:bg-line-soft"
               }`}
             >
@@ -170,12 +170,12 @@ export default function EditScripts({ data }) {
             </button>
           ))}
         </div>
-        <div className="flex overflow-hidden rounded-xl border border-line">
+        <div className="flex overflow-hidden rounded-md border border-line">
           {[[null, "all"], ["cit.", "citation"], ["cf.", "allusion"]].map(([v, l]) => (
             <button
               key={l}
               onClick={() => { setKind(v); setI(0); }}
-              className={`px-3 py-1.5 text-[.85rem] font-extrabold transition ${
+              className={`px-3 py-1.5 text-[.85rem] font-semibold transition ${
                 kind === v ? "bg-accent-soft text-accent" : "bg-surface text-ink-2 hover:bg-line-soft"
               }`}
             >
@@ -186,16 +186,16 @@ export default function EditScripts({ data }) {
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setI((k) => (k - 1 + pairs.length) % pairs.length)}
-            className="rounded-xl border border-line bg-surface px-3 py-1.5 text-[.85rem] font-extrabold text-ink-2 hover:border-accent hover:text-accent"
+            className="rounded-md border border-line bg-surface px-3 py-1.5 text-[.85rem] font-semibold text-ink-2 hover:border-accent hover:text-accent"
           >
             ←
           </button>
-          <span className="font-mono text-[.8rem] font-bold text-muted">
+          <span className="font-mono text-[.8rem] font-semibold text-muted">
             {cite(pair.id)} · {Math.min(i, pairs.length - 1) + 1}/{pairs.length}
           </span>
           <button
             onClick={() => setI((k) => (k + 1) % pairs.length)}
-            className="rounded-xl border border-line bg-surface px-3 py-1.5 text-[.85rem] font-extrabold text-ink-2 hover:border-accent hover:text-accent"
+            className="rounded-md border border-line bg-surface px-3 py-1.5 text-[.85rem] font-semibold text-ink-2 hover:border-accent hover:text-accent"
           >
             →
           </button>
@@ -203,14 +203,14 @@ export default function EditScripts({ data }) {
       </div>
 
       {/* the script */}
-      <div ref={wrap} className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 shadow-card">
+      <div ref={wrap} className="relative overflow-hidden rounded-lg border border-line bg-surface p-5 shadow-card">
         <div className="mb-2 flex items-baseline gap-2">
-          <span className="text-[.65rem] font-extrabold uppercase tracking-[.1em] text-muted">Earlier passage</span>
+          <span className="text-[.65rem] font-semibold uppercase tracking-[.1em] text-muted">Earlier passage</span>
           <span className="font-mono text-[.7rem] text-muted">{pair.ref_type === "cit." ? "quoted" : "alluded to"}</span>
         </div>
         <Passage words={pair.earlier} links={script.links} side="earlier" register={register} hover={hover} onHover={setHover} dimUnlinked />
         <div className="my-14 h-0" />
-        <div className="mb-2 text-[.65rem] font-extrabold uppercase tracking-[.1em] text-muted">Later passage</div>
+        <div className="mb-2 text-[.65rem] font-semibold uppercase tracking-[.1em] text-muted">Later passage</div>
         <Passage words={pair.later} ops={script.ops} links={script.links} side="later" register={register} hover={hover} onHover={setHover} />
         <Links box={box} rects={rects} links={script.links} ops={script.ops} hover={hover} />
       </div>

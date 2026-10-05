@@ -1,241 +1,296 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import PairDetail from "./detail/PairDetail.jsx";
 
-const CIT = "#5b4cb0";
-const CF = "#c05f21";
-const PAGE = 150;
+const PAGE = 40;    // citing passages per page step
+const LONG = 70;    // words after which a long passage shows only the stretch around its linked words
+const CONTEXT = 18; // words of context kept on either side of that stretch
 
-const segKey = (side, cit) => `${side}:${cit}`;
+const bare = (cit) => cit.replace(/^<|>$/g, "");
+const natural = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
-/** Group references into documents (works) per side, keeping only linked segments. */
-function groupDocuments(refs, side) {
-  const docs = new Map();
-  refs.forEach((r) => {
-    const seg = r[side === "query" ? "q" : "s"];
-    let d = docs.get(seg.work);
-    if (!d) {
-      d = { work: seg.work, author: seg.author, segments: new Map(), refs: 0 };
-      docs.set(seg.work, d);
-    }
-    d.refs += 1;
-    let s = d.segments.get(seg.cit);
-    if (!s) {
-      s = { cit: seg.cit, text: seg.text, en: seg.en, refs: [] };
-      d.segments.set(seg.cit, s);
-    }
-    s.refs.push(r);
-  });
-  const natural = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-  return [...docs.values()]
-    .map((d) => ({ ...d, segments: new Map([...d.segments.entries()].sort((a, b) => natural.compare(a[0], b[0]))) }))
-    .sort((a, b) => b.refs - a.refs);
+// The edit operations, with the colours and wording of the edit-script review app.
+const OPS = {
+  COPY: { label: "COPY", text: "the same word, taken over unchanged", color: "#33618f", cls: "bg-op-copy-soft text-op-copy" },
+  INFLECT: { label: "INFLECT", text: "the same word in another form", color: "#8a6414", cls: "bg-op-inflect-soft text-op-inflect" },
+  SUBST: { label: "SUBST", text: "a different word in the same slot", color: "#9b3340", cls: "bg-op-subst-soft text-op-subst" },
+  SPLIT: { label: "SPLIT", text: "one source word becomes two", color: "#5e4a93", cls: "bg-op-split-soft text-op-split" },
+  MERGE: { label: "MERGE", text: "two source words become one", color: "#5e4a93", cls: "bg-op-split-soft text-op-split" },
+  FRAME: { label: "FRAME", text: "the citing formula (ut ait poeta)", color: "#6a707a", cls: "bg-line-soft text-muted" },
+};
+const LINKED = new Set(["COPY", "INFLECT", "SUBST", "SPLIT", "MERGE"]);
+
+/** The stretch of a long passage around its labelled words, with ellipses where text is left out. */
+function excerpt(count, marked) {
+  if (count <= LONG || !marked.length) return { from: 0, to: count };
+  const from = Math.max(0, marked[0] - CONTEXT);
+  const to = Math.min(count, Math.max(marked[marked.length - 1] + CONTEXT + 1, from + 2 * CONTEXT));
+  return { from, to };
 }
 
-function Segment({ side, seg, linked, active, dim, onHover, onClick, register }) {
-  const key = segKey(side, seg.cit);
+/**
+ * A passage as words, each with its operation label (coloured as in the review app); INS and DEL stay plain.
+ * Every word registers its element so the arrows can find it.
+ */
+function Passage({ words, labels, prefix, short, register, onWord }) {
+  const marked = labels.map((l, i) => (l ? i : -1)).filter((i) => i >= 0);
+  const { from, to } = short ? excerpt(words.length, marked) : { from: 0, to: words.length };
   return (
-    <li
-      ref={(el) => register(key, el)}
-      onMouseEnter={() => linked && onHover(key)}
-      onMouseLeave={() => linked && onHover(null)}
-      onClick={() => linked && onClick(key)}
-      className={`rounded-lg px-2.5 py-1.5 transition-colors ${
-        linked ? "cursor-pointer" : ""
-      } ${active ? "bg-accent-soft" : linked ? "hover:bg-line-soft" : ""} ${dim ? "opacity-40" : ""}`}
-    >
-      <div className="flex items-baseline gap-2">
-        <span className={`shrink-0 font-mono text-[.7rem] ${linked ? "font-bold text-accent" : "text-muted"}`}>{seg.cit.replace(/^<|>$/g, "")}</span>
-        {linked && seg.refs.length > 1 && (
-          <span className="shrink-0 rounded-full bg-accent-soft px-1.5 font-mono text-[.65rem] font-bold text-accent">{seg.refs.length}</span>
-        )}
-      </div>
-      <p className={`text-[.88rem] leading-[1.5] ${linked ? "text-ink" : "text-ink-2"}`}>{seg.text}</p>
-      {active && seg.en && <p className="mt-1 text-[.8rem] italic leading-[1.45] text-muted">{seg.en}</p>}
-    </li>
+    <p className="font-serif text-[1rem] leading-[2.15] text-ink">
+      {from > 0 && <span className="text-muted">… </span>}
+      {words.slice(from, to).map((w, k) => {
+        const i = from + k;
+        const op = OPS[labels[i]];
+        const key = `${prefix}${i}`;
+        return (
+          <span key={i}>
+            {op ? (
+              <span ref={(el) => register(key, el)} title={`${op.label}: ${op.text}`}
+                onMouseEnter={() => LINKED.has(labels[i]) && onWord(key)} onMouseLeave={() => onWord(null)}
+                className={`rounded-sm px-0.5 ${op.cls} ${LINKED.has(labels[i]) ? "cursor-pointer" : ""}`}>
+                {w}
+              </span>
+            ) : w}
+            {k < to - from - 1 ? " " : ""}
+          </span>
+        );
+      })}
+      {to < words.length && <span className="text-muted"> …</span>}
+    </p>
   );
 }
 
-function DocumentCard({ side, doc, docsIndex, activeKeys, dimKeys, onHover, onClick, register, onLayout }) {
-  const meta = docsIndex?.[`${side}:${doc.work}`];
-  const [whole, setWhole] = useState(null); // all segments of the work, when loaded
-  const [loading, setLoading] = useState(false);
+function TypeBadge({ type }) {
+  return type === "cit"
+    ? <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[.65rem] font-semibold uppercase tracking-wide text-accent">cit.</span>
+    : <span className="rounded bg-pop-soft px-1.5 py-0.5 text-[.65rem] font-semibold uppercase tracking-wide text-pop">cf.</span>;
+}
 
-  const toggleWhole = async () => {
-    if (whole) { setWhole(null); return; }
-    if (!meta) return;
-    setLoading(true);
-    try {
-      const r = await fetch(`${import.meta.env.BASE_URL}data/${meta.file}`);
-      setWhole(await r.json());
-    } finally {
-      setLoading(false);
+/** One citing passage and every source passage it refers to, side by side; hovering a word outlines its span. */
+function Group({ group, names, ops, showEnglish, onDetails }) {
+  const [open, setOpen] = useState(false);
+  const [word, setWord] = useState(null);     // the word under the pointer, e.g. "q:5" or "s12:3"
+  const box = useRef(null);
+  const nodes = useRef(new Map());
+  const register = (key, el) => { if (el) nodes.current.set(key, el); else nodes.current.delete(key); };
+  const q = group.q;
+  const qWords = useMemo(() => q.text.split(/\s+/), [q.text]);
+
+  // The links of the group as spans: a run of links with the same operation whose citing and source words both
+  // follow one another becomes one span, outlined as one (INS and DEL have no link and are left out).
+  const links = useMemo(() => group.refs.flatMap((r) => {
+    const sorted = [...(ops?.[r.id]?.l ?? [])].sort((m, n) => m[0] - n[0]);
+    const spans = [];
+    sorted.forEach(([ri, si, op]) => {
+      const last = spans[spans.length - 1];
+      if (last && last.op === op && ri === last.qi[last.qi.length - 1] + 1 && si === last.si[last.si.length - 1] + 1) {
+        last.qi.push(ri); last.si.push(si);
+      } else spans.push({ op, qi: [ri], si: [si] });
+    });
+    return spans.map((sp) => ({
+      op: sp.op, qKeys: sp.qi.map((i) => `q:${i}`), sKeys: sp.si.map((i) => `s${r.id}:${i}`),
+      key: `s${r.id}:${sp.si[0]}>q:${sp.qi[0]}`,
+    }));
+  }), [group, ops]);
+  // Labels of the citing words: the first linked operation over the group's sources, otherwise the citing formula.
+  const qLabels = useMemo(() => qWords.map((_, i) => {
+    let frame = false;
+    for (const r of group.refs) {
+      const t = ops?.[r.id]?.t?.[i];
+      if (LINKED.has(t)) return t;
+      if (t === "FRAME") frame = true;
     }
-  };
+    return frame ? "FRAME" : null;
+  }), [qWords, group, ops]);
 
-  useEffect(() => { onLayout(); }, [whole, onLayout]);
+  const shown = word ? links.filter((l) => l.qKeys.includes(word) || l.sKeys.includes(word)) : [];
+  const [outlines, setOutlines] = useState([]);
 
-  const rows = whole
-    ? whole.map((s) => doc.segments.get(s.cit) ?? { cit: s.cit, text: s.text, refs: [] })
-    : [...doc.segments.values()];
+  // The hovered word's span, on both sides: one outline per line it covers, around all its words together.
+  useLayoutEffect(() => {
+    const frame = box.current?.getBoundingClientRect();
+    if (!frame || !shown.length) { setOutlines([]); return; }
+    const rows = (keys) => {
+      const rects = keys.map((k) => nodes.current.get(k)?.getBoundingClientRect()).filter(Boolean);
+      const lines = [];
+      rects.forEach((r) => {
+        const row = lines.find((l) => Math.abs(l.top - r.top) < 4);
+        if (row) { row.left = Math.min(row.left, r.left); row.right = Math.max(row.right, r.right); row.bottom = Math.max(row.bottom, r.bottom); }
+        else lines.push({ top: r.top, bottom: r.bottom, left: r.left, right: r.right });
+      });
+      return lines.map((l) => ({ x: l.left - frame.left - 2, y: l.top - frame.top - 2, w: l.right - l.left + 4, h: l.bottom - l.top + 4 }));
+    };
+    setOutlines(shown.flatMap((l) => [...rows(l.sKeys), ...rows(l.qKeys)].map((r, i) => ({ ...r, key: `${l.key}:${i}`, op: l.op }))));
+  }, [word, open, showEnglish, links]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const long = qWords.length > LONG;
 
   return (
-    <article className="rounded-2xl border border-line bg-surface shadow-card">
-      <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-line-soft px-4 py-3">
-        <div>
-          <p className="text-[.65rem] font-extrabold uppercase tracking-[.1em] text-pop">{meta?.author_name ?? doc.author}</p>
-          <h3 className="font-mono text-[1rem] font-bold text-ink">{doc.work}</h3>
-        </div>
-        <div className="flex items-center gap-3 text-[.78rem] font-bold">
-          <span className="text-muted">{doc.refs} ref{doc.refs === 1 ? "" : "s"} · {doc.segments.size} seg{doc.segments.size === 1 ? "" : "s"}{meta ? ` of ${meta.segments.toLocaleString()}` : ""}</span>
-          <button type="button" onClick={toggleWhole} disabled={loading || !meta}
-            className="rounded-full border border-line px-2.5 py-0.5 text-ink-2 transition hover:border-accent hover:text-accent disabled:opacity-50">
-            {loading ? "Loading…" : whole ? "Linked only" : "Whole document"}
+    <article ref={box} onMouseLeave={() => setWord(null)}
+      className="relative grid gap-x-8 gap-y-3 rounded-lg border border-line bg-surface p-4 shadow-card transition-shadow hover:shadow-card-lg md:grid-cols-2">
+      {/* citing passage */}
+      <div className="min-w-0">
+        <p className="text-[.65rem] font-semibold uppercase tracking-[.08em] text-muted">{names[q.author] ?? q.author} · citing</p>
+        <p className="mb-1.5 font-mono text-[.8rem] font-semibold text-ink">{bare(q.cit)}</p>
+        <Passage words={qWords} labels={qLabels} prefix="q:" short={!open} register={register} onWord={setWord} />
+        {long && (
+          <button type="button" onClick={() => setOpen((o) => !o)} className="mt-1 text-[.78rem] font-semibold text-accent hover:underline">
+            {open ? "show less" : "show the whole passage"}
           </button>
-        </div>
-      </header>
-      {whole && whole.length > 3000 && (
-        <p className="border-b border-line-soft bg-pop-soft px-4 py-1.5 text-[.75rem] font-semibold text-pop">Long document: {whole.length.toLocaleString()} segments.</p>
-      )}
-      <ul className="flex flex-col gap-0.5 p-2">
-        {rows.map((seg) => {
-          const key = segKey(side, seg.cit);
+        )}
+        {showEnglish && q.en && <p className="mt-2 text-[.85rem] italic leading-normal text-muted">{q.en}</p>}
+      </div>
+
+      {/* the sources it refers to */}
+      <div className="flex min-w-0 flex-col gap-3 md:border-l md:border-line-soft md:pl-6">
+        {group.refs.map((r) => {
+          const sWords = r.s.text.split(/\s+/);
+          const sLabels = sWords.map(() => null);
+          (ops?.[r.id]?.l ?? []).forEach(([, si, op]) => { if (!sLabels[si]) sLabels[si] = op; });
           return (
-            <Segment key={seg.cit} side={side} seg={seg} linked={seg.refs.length > 0}
-              active={activeKeys.has(key)} dim={dimKeys.size > 0 && !dimKeys.has(key) && seg.refs.length > 0}
-              onHover={onHover} onClick={onClick} register={register} />
+            <div key={r.id} className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className="text-[.65rem] font-semibold uppercase tracking-[.08em] text-muted">{names[r.s.author] ?? r.s.author} · source</span>
+                <TypeBadge type={r.type} />
+                {r.prov?.label && (
+                  <a href={r.prov.url} target="_blank" rel="noopener" title={r.prov.title}
+                    className="ml-auto text-[.72rem] text-muted hover:text-accent hover:underline">{r.prov.label}</a>
+                )}
+              </div>
+              <p className="mb-1.5 font-mono text-[.8rem] font-semibold text-ink">{bare(r.s.cit)}</p>
+              <Passage words={sWords} labels={sLabels} prefix={`s${r.id}:`} short register={register} onWord={setWord} />
+              {showEnglish && r.s.en && <p className="mt-2 text-[.85rem] italic leading-normal text-muted">{r.s.en}</p>}
+              <button type="button" onClick={() => onDetails(r)}
+                className="btn-secondary mt-2.5 inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-[.8rem] font-semibold transition hover:-translate-y-px">
+                Show details <span aria-hidden="true">→</span>
+              </button>
+            </div>
           );
         })}
-      </ul>
+      </div>
+
+      {/* the hovered span's outlines */}
+      <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+        {outlines.map((o) => (
+          <rect key={o.key} x={o.x} y={o.y} width={o.w} height={o.h} rx="4" fill="none" stroke={OPS[o.op]?.color ?? "#6a707a"}
+            strokeWidth="1.6" className="arrow-head" />
+        ))}
+      </svg>
     </article>
   );
 }
 
-export default function DocumentBrowser({ refs, docsIndex }) {
-  const [limit, setLimit] = useState(PAGE);
-  const [hoverKey, setHoverKey] = useState(null);
-  const [pinKey, setPinKey] = useState(null);
-  const [lineTip, setLineTip] = useState(null);
-  const [lines, setLines] = useState([]);
-  const containerRef = useRef(null);
-  const nodeMap = useRef(new Map());
-
-  useEffect(() => { setLimit(PAGE); setPinKey(null); setHoverKey(null); }, [refs]);
-
-  const shown = useMemo(() => refs.slice(0, limit), [refs, limit]);
-  const left = useMemo(() => groupDocuments(shown, "query"), [shown]);
-  const right = useMemo(() => groupDocuments(shown, "source"), [shown]);
-
-  const register = useCallback((key, el) => {
-    if (el) nodeMap.current.set(key, el); else nodeMap.current.delete(key);
-  }, []);
-
-  const [layoutTick, setLayoutTick] = useState(0);
-  const bump = useCallback(() => setLayoutTick((t) => t + 1), []);
-
-  // Compute connection lines from the rendered segment rows.
-  useLayoutEffect(() => {
-    const box = containerRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const next = [];
-    shown.forEach((r) => {
-      const a = nodeMap.current.get(segKey("query", r.q.cit));
-      const b = nodeMap.current.get(segKey("source", r.s.cit));
-      if (!a || !b) return;
-      const ra = a.getBoundingClientRect();
-      const rb = b.getBoundingClientRect();
-      next.push({ ref: r, x1: ra.right - box.left, y1: ra.top + ra.height / 2 - box.top, x2: rb.left - box.left, y2: rb.top + rb.height / 2 - box.top });
-    });
-    setLines(next);
-  }, [shown, layoutTick]);
-
+/**
+ * The detail view of one reference in a full-screen dialog over the page: the review app's detail page, adapted.
+ * Closed with the × button, Esc or a click on the backdrop; the page underneath keeps its place.
+ */
+function DetailDialog({ reference, names, onClose }) {
+  const [record, setRecord] = useState(null);
+  const [error, setError] = useState(null);
+  const closeButton = useRef(null);
   useEffect(() => {
-    if (!containerRef.current) return undefined;
-    const ro = new ResizeObserver(() => bump());
-    ro.observe(containerRef.current);
-    window.addEventListener("resize", bump);
-    return () => { ro.disconnect(); window.removeEventListener("resize", bump); };
-  }, [bump]);
+    setRecord(null); setError(null);
+    fetch(`${import.meta.env.BASE_URL}data/details/${reference.id}.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(setRecord).catch((e) => setError(e.message));
+  }, [reference.id]);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButton.current?.focus();
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = overflow; };
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 p-3 backdrop-blur-[2px] sm:p-6" onClick={onClose}
+      role="dialog" aria-modal="true" aria-label={`Details of ${bare(reference.s.cit)} → ${bare(reference.q.cit)}`}>
+      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-bg shadow-card-lg"
+        onClick={(e) => e.stopPropagation()}>
+        {/* the header stays while the details scroll, so the close button is always at hand */}
+        <header className="flex shrink-0 items-center gap-3 border-b border-black/10 bg-linear-to-b from-header-top to-header-bottom px-5 py-2.5 sm:px-7">
+          <p className="min-w-0 truncate font-serif text-[1.05rem] font-semibold">
+            <span className="text-pop">Details</span>{" "}
+            <span className="text-accent">{bare(reference.s.cit)} → {bare(reference.q.cit)}</span>
+          </p>
+          <button ref={closeButton} type="button" onClick={onClose} aria-label="Close"
+            className="btn-secondary ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1 text-[.8rem] font-semibold">
+            Close <span aria-hidden="true" className="text-base leading-none">×</span>
+          </button>
+        </header>
+        <div className="min-h-0 overflow-y-auto p-5 sm:p-7">
+          {record ? <PairDetail record={record} provenance={reference.prov} names={names} />
+            : <p className="p-8 text-center text-muted">{error ? `Could not load the details: ${error}` : "Loading…"}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  // Active segment (pinned wins over hover) and everything linked to it.
-  const focusKey = pinKey ?? hoverKey;
-  const { activeKeys, dimKeys } = useMemo(() => {
-    const active = new Set();
-    const keep = new Set();
-    if (focusKey) {
-      active.add(focusKey);
-      shown.forEach((r) => {
-        const qk = segKey("query", r.q.cit);
-        const sk = segKey("source", r.s.cit);
-        if (qk === focusKey || sk === focusKey) { active.add(qk); active.add(sk); }
-      });
-      active.forEach((k) => keep.add(k));
-    }
-    return { activeKeys: active, dimKeys: keep };
-  }, [focusKey, shown]);
+/** Group the references by citing passage, in reading order of the citing works. */
+function groupByCitingPassage(refs) {
+  const groups = new Map();
+  refs.forEach((r) => {
+    let g = groups.get(r.q.cit);
+    if (!g) { g = { key: r.q.cit, q: r.q, refs: [] }; groups.set(r.q.cit, g); }
+    g.refs.push(r);
+  });
+  const list = [...groups.values()];
+  list.forEach((g) => g.refs.sort((a, b) => natural.compare(a.s.cit, b.s.cit)));
+  return list.sort((a, b) => natural.compare(a.key, b.key));
+}
 
-  const lineActive = (l) => !focusKey || activeKeys.has(segKey("query", l.ref.q.cit)) && activeKeys.has(segKey("source", l.ref.s.cit)) && (segKey("query", l.ref.q.cit) === focusKey || segKey("source", l.ref.s.cit) === focusKey);
+export default function DocumentBrowser({ refs, docsIndex, ops }) {
+  const [limit, setLimit] = useState(PAGE);
+  const [showEnglish, setShowEnglish] = useState(false);
+  const [details, setDetails] = useState(null);   // the reference whose detail dialog is open
+  const closeDetails = useCallback(() => setDetails(null), []);
+  useEffect(() => { setLimit(PAGE); }, [refs]);
+
+  const groups = useMemo(() => groupByCitingPassage(refs), [refs]);
+  const names = useMemo(() => {
+    const out = {};
+    Object.values(docsIndex ?? {}).forEach((d) => { out[d.author] = d.author_name; });
+    return out;
+  }, [docsIndex]);
 
   if (refs.length === 0) {
-    return <p className="rounded-2xl border-2 border-dashed border-line p-8 text-center text-muted">No references match the current filters.</p>;
+    return <p className="rounded-lg border-2 border-dashed border-line p-8 text-center text-muted">No references match the current filters.</p>;
   }
-
-  const path = (l) => {
-    const mx = (l.x1 + l.x2) / 2;
-    return `M${l.x1},${l.y1} C${mx},${l.y1} ${mx},${l.y2} ${l.x2},${l.y2}`;
-  };
+  const shown = groups.slice(0, limit);
 
   return (
     <div>
-      <div ref={containerRef} className="relative">
-        <div className="grid grid-cols-[1fr_96px_1fr] items-start">
-          <div className="flex flex-col gap-4">{left.map((d) => (
-            <DocumentCard key={d.work} side="query" doc={d} docsIndex={docsIndex} activeKeys={activeKeys} dimKeys={dimKeys}
-              onHover={setHoverKey} onClick={(k) => setPinKey((p) => (p === k ? null : k))} register={register} onLayout={bump} />
-          ))}</div>
-          <div />
-          <div className="flex flex-col gap-4">{right.map((d) => (
-            <DocumentCard key={d.work} side="source" doc={d} docsIndex={docsIndex} activeKeys={activeKeys} dimKeys={dimKeys}
-              onHover={setHoverKey} onClick={(k) => setPinKey((p) => (p === k ? null : k))} register={register} onLayout={bump} />
-          ))}</div>
-        </div>
-
-        <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
-          {lines.map((l) => {
-            const on = lineActive(l);
-            return (
-              <g key={l.ref.id} className="pointer-events-auto">
-                <path d={path(l)} fill="none" stroke={l.ref.type === "cit" ? CIT : CF} strokeWidth={on && focusKey ? 2.5 : 1.5}
-                  opacity={focusKey ? (on ? 0.9 : 0.08) : 0.45} strokeLinecap="round" />
-                <path d={path(l)} fill="none" stroke="transparent" strokeWidth="10" className="cursor-pointer"
-                  onMouseEnter={(e) => { const b = containerRef.current.getBoundingClientRect(); setLineTip({ ref: l.ref, x: e.clientX - b.left, y: e.clientY - b.top }); setHoverKey(segKey("query", l.ref.q.cit)); }}
-                  onMouseMove={(e) => { const b = containerRef.current.getBoundingClientRect(); setLineTip((t) => t && { ...t, x: e.clientX - b.left, y: e.clientY - b.top }); }}
-                  onMouseLeave={() => { setLineTip(null); setHoverKey(null); }} />
-              </g>
-            );
-          })}
-        </svg>
-
-        {lineTip && (
-          <div className="pointer-events-none absolute z-10 w-64 rounded-xl border border-line bg-surface px-3 py-2 text-[.78rem] shadow-card-lg" style={{ left: lineTip.x + 12, top: lineTip.y + 12 }}>
-            <div className="mb-1 flex items-center gap-2">
-              <span className="rounded-full px-2 py-0.5 font-extrabold text-white" style={{ background: lineTip.ref.type === "cit" ? CIT : CF }}>
-                {lineTip.ref.type === "cit" ? "verbatim (cit.)" : "allusion (cf.)"}
-              </span>
-              <span className="font-mono text-muted">#{lineTip.ref.id}</span>
-            </div>
-            <div className="font-mono text-[.72rem] text-ink-2">{lineTip.ref.q.cit.replace(/^<|>$/g, "")} → {lineTip.ref.s.cit.replace(/^<|>$/g, "")}</div>
-            <div className="mt-1 text-muted">Source: {lineTip.ref.prov.label}</div>
-          </div>
-        )}
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line bg-surface px-3 py-2 text-[.8rem] text-ink-2">
+        <span className="text-[.65rem] font-semibold uppercase tracking-[.08em] text-muted">Operations</span>
+        {["COPY", "INFLECT", "SUBST", "SPLIT", "FRAME"].map((op) => (
+          <span key={op} className="inline-flex items-center gap-1.5" title={OPS[op].text}>
+            <span className={`rounded-sm px-1 text-[.7rem] font-semibold ${OPS[op].cls}`}>{op === "SPLIT" ? "SPLIT / MERGE" : op}</span>
+            <span className="text-muted">{op === "SPLIT" ? "one word into two, or two into one" : OPS[op].text}</span>
+          </span>
+        ))}
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[.8rem] text-ink-2">
+        <span>{groups.length.toLocaleString()} citing passages, each beside the passages it refers to</span>
+        <label className="ml-auto inline-flex cursor-pointer items-center gap-2 font-semibold">
+          <input type="checkbox" checked={showEnglish} onChange={(e) => setShowEnglish(e.target.checked)} className="accent-accent" />
+          English translations
+        </label>
       </div>
 
-      {refs.length > shown.length && (
+      <div className="flex flex-col gap-3">
+        {shown.map((g) => <Group key={g.key} group={g} names={names} ops={ops} showEnglish={showEnglish} onDetails={setDetails} />)}
+      </div>
+
+      {groups.length > shown.length && (
         <div className="mt-6 text-center">
           <button type="button" onClick={() => setLimit((l) => l + PAGE)}
-            className="rounded-full border border-line bg-surface px-5 py-2 text-[.9rem] font-extrabold text-ink-2 shadow-card transition hover:-translate-y-0.5 hover:border-accent hover:text-accent">
-            Show {Math.min(PAGE, refs.length - shown.length)} more of {(refs.length - shown.length).toLocaleString()} remaining
+            className="rounded-md border border-line bg-surface px-5 py-2 text-[.9rem] font-semibold text-ink-2 shadow-card transition hover:border-accent hover:text-accent">
+            Show {Math.min(PAGE, groups.length - shown.length)} more of {(groups.length - shown.length).toLocaleString()} remaining passages
           </button>
         </div>
       )}
+
+      {details && <DetailDialog reference={details} names={names} onClose={closeDetails} />}
     </div>
   );
 }
