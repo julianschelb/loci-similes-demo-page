@@ -37,6 +37,8 @@ npm run dev        # http://localhost:5173/loci-similes-demo-page/
 ## Layout
 
 - `src/paper.js` — paper metadata shown in the header (title, authors, abstract, links, BibTeX).
+- `vite.config.js` — besides the build, writes the page's search metadata from `src/paper.js` into `index.html`: description, canonical URL, Open Graph and Twitter preview, Google Scholar citation tags, schema.org JSON-LD for the article and the dataset, and a static copy of the paper header for crawlers.
+- `public/og-image.png`, `public/favicon.svg`, `public/sitemap.xml` — link preview image, icon and sitemap.
 - `src/components/PaperHeader.jsx` — ACL-Anthology-style header with abstract and action buttons.
 - `src/components/ReferenceGraph.jsx` — author graph; hover unfolds an author into its works, a click pins it and filters.
 - `src/components/DocumentBrowser.jsx` — one card per citing passage beside its sources, with the edit operations; "Show details" opens the detail dialog.
