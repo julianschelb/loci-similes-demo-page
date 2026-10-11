@@ -2,8 +2,8 @@
 
 Reads the edit-script review app's records (one pair per line: tokens, gold links and the aligner's prediction)
 and writes model/ops.json, keyed by the benchmark reference id:
-  t  - one operation per word of the citing passage (COPY, INFLECT, SUBST, SPLIT, MERGE, FRAME, INS)
-  l  - the links, [citing word, source word, operation]; INS and DEL have none
+  t  - one operation per word of the citing passage (COPY, INFLECT, SUBST, SPLIT, MERGE, MARK, INS, NEW)
+  l  - the links, [citing word, source word, operation]; INS, NEW, DEL and OUT have none
 and model/details/<id>.json, one per reference, for the detail view (loaded when it is opened): both
 passages with their tokens, the edition's text and the English translation, the reference type and the
 predicted links with their probabilities and citing-formula spans.
@@ -18,7 +18,7 @@ import argparse
 import json
 from pathlib import Path
 
-DEFAULT_RECORDS = Path("../latin-edit-script-review/public/data/gold_2026-09-24.populated.records.jsonl")
+DEFAULT_RECORDS = Path("../latin-edit-script-review/public/data/gold_2026-10-12.populated.records.jsonl")
 
 
 SIDE_FIELDS = ("author", "work", "citation", "text", "text_original", "text_english", "tokens")

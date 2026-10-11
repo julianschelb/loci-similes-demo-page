@@ -15,7 +15,7 @@ const OPS = {
   SUBST: { label: "SUBST", text: "a different word in the same slot", color: "#9b3340", cls: "bg-op-subst-soft text-op-subst" },
   SPLIT: { label: "SPLIT", text: "one source word becomes two", color: "#5e4a93", cls: "bg-op-split-soft text-op-split" },
   MERGE: { label: "MERGE", text: "two source words become one", color: "#5e4a93", cls: "bg-op-split-soft text-op-split" },
-  FRAME: { label: "FRAME", text: "the citing formula (ut ait poeta)", color: "#6a707a", cls: "bg-line-soft text-muted" },
+  MARK: { label: "MARK", text: "the citing formula (ut ait poeta)", color: "#6a707a", cls: "bg-line-soft text-muted" },
 };
 const LINKED = new Set(["COPY", "INFLECT", "SUBST", "SPLIT", "MERGE"]);
 
@@ -28,7 +28,7 @@ function excerpt(count, marked) {
 }
 
 /**
- * A passage as words, each with its operation label (coloured as in the review app); INS and DEL stay plain.
+ * A passage as words, each with its operation label (coloured as in the review app); INS, NEW, DEL and OUT stay plain.
  * Every word registers its element so the arrows can find it.
  */
 function Passage({ words, labels, prefix, short, register, onWord }) {
@@ -76,7 +76,7 @@ function Group({ group, names, ops, showEnglish, onDetails }) {
   const qWords = useMemo(() => q.text.split(/\s+/), [q.text]);
 
   // The links of the group as spans: a run of links with the same operation whose citing and source words both
-  // follow one another becomes one span, outlined as one (INS and DEL have no link and are left out).
+  // follow one another becomes one span, outlined as one (INS, NEW, DEL and OUT have no link and are left out).
   const links = useMemo(() => group.refs.flatMap((r) => {
     const sorted = [...(ops?.[r.id]?.l ?? [])].sort((m, n) => m[0] - n[0]);
     const spans = [];
@@ -93,13 +93,13 @@ function Group({ group, names, ops, showEnglish, onDetails }) {
   }), [group, ops]);
   // Labels of the citing words: the first linked operation over the group's sources, otherwise the citing formula.
   const qLabels = useMemo(() => qWords.map((_, i) => {
-    let frame = false;
+    let mark = false;
     for (const r of group.refs) {
       const t = ops?.[r.id]?.t?.[i];
       if (LINKED.has(t)) return t;
-      if (t === "FRAME") frame = true;
+      if (t === "MARK") mark = true;
     }
-    return frame ? "FRAME" : null;
+    return mark ? "MARK" : null;
   }), [qWords, group, ops]);
 
   const shown = word ? links.filter((l) => l.qKeys.includes(word) || l.sKeys.includes(word)) : [];
@@ -293,7 +293,7 @@ export default function DocumentBrowser({ refs, docsIndex, ops }) {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line bg-surface px-3 py-2 text-[.8rem] text-ink-2">
         <span className="text-[.65rem] font-semibold uppercase tracking-[.08em] text-muted">Operations</span>
-        {["COPY", "INFLECT", "SUBST", "SPLIT", "FRAME"].map((op) => (
+        {["COPY", "INFLECT", "SUBST", "SPLIT", "MARK"].map((op) => (
           <span key={op} className="inline-flex items-center gap-1.5" title={OPS[op].text}>
             <span className={`rounded-sm px-1 text-[.7rem] font-semibold ${OPS[op].cls}`}>{op === "SPLIT" ? "SPLIT / MERGE" : op}</span>
             <span className="text-muted">{op === "SPLIT" ? "one word into two, or two into one" : OPS[op].text}</span>
