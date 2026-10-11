@@ -47,6 +47,14 @@ function Words({ tokens, side, tags, linked, register, hover, onHover }) {
   );
 }
 
+// The layout position of an element inside `root`, summed over its offset parents. Unlike getBoundingClientRect it
+// ignores transforms, so the dialog scaling in while it opens (.dialog-in) cannot shift the arrows off their words.
+function offsetIn(el, root) {
+  let x = 0, y = 0;
+  for (let node = el; node && node !== root; node = node.offsetParent) { x += node.offsetLeft; y += node.offsetTop; }
+  return { x, y };
+}
+
 export default function MappingDiagram({ source, reuse, links, spans = [] }) {
   const [rects, setRects] = useState({});
   // the row whose first linked word sits further left is indented, so the first link runs straight down
@@ -64,9 +72,8 @@ export default function MappingDiagram({ source, reuse, links, spans = [] }) {
     const first = [...links].sort((a, b) => a.r - b.r)[0];
     const a = first && els.current.get(`source:${first.s}`), b = first && els.current.get(`reuse:${first.r}`);
     if (!a || !b || !wrap.current) return;
-    const left = wrap.current.getBoundingClientRect().left;
-    const sx = a.getBoundingClientRect().left - left - shift.source;
-    const rx = b.getBoundingClientRect().left - left - shift.reuse;
+    const sx = offsetIn(a, wrap.current).x - shift.source;
+    const rx = offsetIn(b, wrap.current).x - shift.reuse;
     const next = { source: Math.max(0, rx - sx), reuse: Math.max(0, sx - rx) };
     if (Math.abs(next.source - shift.source) > 0.5 || Math.abs(next.reuse - shift.reuse) > 0.5) setShift(next);
   }, [source, reuse, links, shift]);
@@ -75,11 +82,10 @@ export default function MappingDiagram({ source, reuse, links, spans = [] }) {
   useLayoutEffect(() => {
     const measure = () => {
       if (!wrap.current) return;
-      const box = wrap.current.getBoundingClientRect();
-      const next = { box: { width: box.width, height: box.height } };
+      const next = { box: { width: wrap.current.offsetWidth, height: wrap.current.offsetHeight } };
       els.current.forEach((el, key) => {
-        const r = el.getBoundingClientRect();
-        next[key] = { x: r.left - box.left + r.width / 2, top: r.top - box.top, bottom: r.bottom - box.top };
+        const { x, y } = offsetIn(el, wrap.current);
+        next[key] = { x: x + el.offsetWidth / 2, top: y, bottom: y + el.offsetHeight };
       });
       setRects(next);
     };
